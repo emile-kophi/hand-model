@@ -37,10 +37,12 @@ with mp_hands.Hands(
         hand_label = results.multi_handedness[i].classification[0].label  # 'Left' o 'Right'
         hand_score = results.multi_handedness[i].classification[0].score  # Probabilità che sia una mano
         timestamp = int(cv2.getTickCount() / cv2.getTickFrequency() * 1000)
-        logging.debug(f"\n[Frame Timestamp: {timestamp} ms] Mano: {hand_label} ({hand_score:.2f})")
-        logging.debug("end of frame")
-        # for idx, landmark in enumerate(hand_landmarks.landmark):
-        #  logging.debug(f"Landmark({idx}): x={landmark.x:.4f}, y={landmark.y:.4f}, z={landmark.z:.4f}"
+        # logging.debug(f"\n[Frame Timestamp: {timestamp} ms] Mano: {hand_label} ({hand_score:.2f})")
+        # logging.info(type(results.multi_hand_landmarks))
+        # logging.debug("end of frame")
+        for idx, landmark in enumerate(hand_landmarks.landmark):
+        #  logging.debug(f"Landmark({idx}): x={landmark.x:.4f}, y={landmark.y:.4f}, z={landmark.z:.4f}")
+         print(dir(landmark))
         mp_drawing.draw_landmarks(
             image,
             hand_landmarks,
@@ -53,10 +55,6 @@ with mp_hands.Hands(
     # All'interno del tuo script Python
     # 'premi ESC per interompere il video'
     if cv2.waitKey(5) & 0xFF == 27:
-      print("no more access for webcame")
+      logging.warning("no more access for webcame")
       break
 cap.release()
-
-
-
-   
