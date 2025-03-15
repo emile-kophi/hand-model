@@ -6,7 +6,8 @@ class ROSclient:
     def __init__(self, host='localhost', port=9090):
         self.client= roslibpy.Ros(host=host,port=port)
         self.publishers= {}
-        self.suscribers= {}
+        self.subscribers= {}
+        self.publishing_threads = {}
         self.running=False
 
         # logger configuration
@@ -27,3 +28,25 @@ class ROSclient:
         self.client.run()
         self.running = True
         self.logger.info(f'Connected: {self.client.is_connected}')
+
+    def disconnect(self):
+        """Disconnect from the ROS client and stop threads."""
+        self.running = False
+        for thread in self.publishing_threads.values():
+            thread.join()  # Wait for threads to finish
+        for pub in self.publishers.values():
+            pub.unadvertise()
+        self.client.close()
+        self.logger.info("Disconnected")
+
+    def create_subscriber(self, topic_name, msg_type, callback):
+
+        subscriber = roslibpy.Topic(
+            self.client,
+            topic_name,
+            msg_type,
+            queue_size=10
+        )
+        subscriber.subscribe(callback)
+        self.subscribers[topic_name] = subscriber
+        self.logger.info(f"Subscribed to {topic_name}")
