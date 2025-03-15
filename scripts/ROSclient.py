@@ -41,12 +41,25 @@ class ROSclient:
 
     def create_subscriber(self, topic_name, msg_type, callback):
 
-        subscriber = roslibpy.Topic(
-            self.client,
-            topic_name,
-            msg_type,
-            queue_size=10
-        )
+        subscriber = roslibpy.Topic(self.client, topic_name, msg_type, queue_size=10)
         subscriber.subscribe(callback)
         self.subscribers[topic_name] = subscriber
         self.logger.info(f"Subscribed to {topic_name}")
+
+
+    def create_publisher(self, topic_name, msg_type, message_data):
+
+        talker = roslibpy.Topic(self.client, topic_name, msg_type)
+
+        talker.publish(roslibpy.Message(message_data))
+        self.logger.info(f"Published message to {topic_name}")
+        talker.unadvertise()
+
+    # def use_service(self, service_name, service_type):
+
+    #     service = roslibpy.Service(self.client, service_name, service_type)
+    #     request = roslibpy.ServiceRequest()
+    #     result = service.call(request)
+    #     self.logger.info(f"Service {type(result)} called")
+        
+    #     return result['']
