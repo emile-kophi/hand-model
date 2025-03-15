@@ -7,7 +7,6 @@ class ROSclient:
         self.client= roslibpy.Ros(host=host,port=port)
         self.publishers= {}
         self.subscribers= {}
-        self.publishing_threads = {}
         self.running=False
 
         # logger configuration
@@ -32,34 +31,48 @@ class ROSclient:
     def disconnect(self):
         """Disconnect from the ROS client and stop threads."""
         self.running = False
-        for thread in self.publishing_threads.values():
-            thread.join()  # Wait for threads to finish
         for pub in self.publishers.values():
             pub.unadvertise()
-        self.client.close()
+        self.client.terminate()
         self.logger.info("Disconnected")
 
     def create_subscriber(self, topic_name, msg_type, callback):
 
-        subscriber = roslibpy.Topic(self.client, topic_name, msg_type, queue_size=10)
+        subscriber = roslibpy.Topic(self.client, topic_name, msg_type)
         subscriber.subscribe(callback)
         self.subscribers[topic_name] = subscriber
         self.logger.info(f"Subscribed to {topic_name}")
 
+    def create_publisher(self, topic_name, msg_type):
+        """Create a publisher if it doesn't exist"""
+        if topic_name not in self.publishers:
+            talker = roslibpy.Topic(self.client, topic_name, msg_type)
+            talker.advertise()
+            self.publishers[topic_name] = talker
+            self.logger.info(f"Publisher created for {topic_name}")
 
-    def create_publisher(self, topic_name, msg_type, message_data):
+    def publish_data(self, topic_name, message_data):
+        """Publish message data"""
+        if topic_name in self.publishers:
+            talker = self.publishers[topic_name]
+            talker.publish(roslibpy.Message(message_data))
+            self.logger.debug(f"Published to {topic_name}: {message_data}")
+        else:
+            self.logger.error(f"Publisher for {topic_name} does not exist! Call create_publisher first.")
 
-        talker = roslibpy.Topic(self.client, topic_name, msg_type)
 
-        talker.publish(roslibpy.Message(message_data))
-        self.logger.info(f"Published message to {topic_name}")
-        talker.unadvertise()
+    # def create_publisher(self, topic_name, msg_type, message_data):
 
-    # def use_service(self, service_name, service_type):
+    #     talker = roslibpy.Topic(self.client, topic_name, msg_type)
+    #     talker.publish(roslibpy.Message(message_data))
+    #     self.logger.info(f"Published message to {topic_name}")
+    #     talker.unadvertise()
 
-    #     service = roslibpy.Service(self.client, service_name, service_type)
-    #     request = roslibpy.ServiceRequest()
-    #     result = service.call(request)
-    #     self.logger.info(f"Service {type(result)} called")
+    """def use_service(self, service_name, service_type):
+
+        service = roslibpy.Service(self.client, service_name, service_type)
+        request = roslibpy.ServiceRequest()
+        result = service.call(request)
+        self.logger.info(f"Service {type(result)} called")
         
-    #     return result['']
+        return result['hand'] """
