@@ -1,10 +1,6 @@
 import roslibpy
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
 
 class ROSclient:
     def __init__(self, host='localhost', port=9090):
@@ -57,12 +53,20 @@ class ROSclient:
         else:
             self.logger.info(f"Publisher already exists for {topic_name}")
 
+
     def publish_data(self, topic_name, message_data):
         """Publish message data"""
         if topic_name in self.publishers:
             talker = self.publishers[topic_name]
-            talker.publish(roslibpy.Message(message_data))
-            self.logger.info(f"Published data to {topic_name}")
+            # Verifica che talker sia di tipo roslibpy.Topic
+            if isinstance(talker, roslibpy.Topic):
+                talker.publish(roslibpy.Message(message_data))
+                self.logger.info(f"Published data to {topic_name}")
+                talker.publish(roslibpy.Message(message_data))
+                self.logger.info(f"Published data to {topic_name}")
+            else:
+                self.logger.error(f"Talker is not of type roslibpy.Topic!")
+
         else:
             self.logger.error(f"Publisher for {topic_name} does not exist! Call create_publisher first.")
 
@@ -94,19 +98,5 @@ def hand_landmarks_callback(message):
             "score": message['score'],
             "landmarks": hand_landmarks_list
         })
-        ros_client.publish_data("/hand_landmarks", all_landmarks_msg)
-
     except Exception as e:
         logging.error(f"Error processing message: {e}")
-
-#  ROSclient and topic launch
-if __name__ == "__main__":
-    ros_client = ROSclient()
-    ros_client.connect()
-    ros_client.create_subscriber('/hand_landmarks', 'custom_msgs/All_landmarks', hand_landmarks_callback)
-
-    try:
-        ros_client.client.run_forever()
-    except KeyboardInterrupt:
-        logging.warning("Shutting down...")
-        ros_client.disconnect()
