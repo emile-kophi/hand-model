@@ -1,6 +1,9 @@
 import roslibpy
 import logging
-import json  # Added for serializing data in JSON format
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 
 class ROSclient:
@@ -12,7 +15,7 @@ class ROSclient:
 
         # logger configuration
         self.logger = logging.getLogger(__name__) 
-        self.logger.setLevel(logging.INFO) 
+        self.logger.setLevel(logging.DEBUG) 
 
         # log manager configuration
         manager = logging.StreamHandler()
@@ -51,39 +54,47 @@ class ROSclient:
             talker.advertise()
             self.publishers[topic_name] = talker
             self.logger.info(f"Publisher created for {topic_name}")
+        else:
+            self.logger.info(f"Publisher already exists for {topic_name}")
 
     def publish_data(self, topic_name, message_data):
         """Publish message data"""
         if topic_name in self.publishers:
             talker = self.publishers[topic_name]
-            talker.publish(roslibpy.Message({"data": message_data}))
-            self.logger.debug(f"Published to {topic_name}: {message_data}")
+            talker.publish(roslibpy.Message(message_data))
+            self.logger.info(f"Published data to {topic_name}")
         else:
             self.logger.error(f"Publisher for {topic_name} does not exist! Call create_publisher first.")
-    def create_subscriber(self, topic_name, msg_type, callback):
-        subscriber = roslibpy.Topic(self.client, topic_name, msg_type)
-        subscriber.subscribe(callback)
-        self.subscribers[topic_name] = subscriber
-        self.logger.info(f"Subscribed to {topic_name}")
+
 
 # CALLBACK to recived landmark data
 def hand_landmarks_callback(message):
     try:
         logging.info(" message recived")
 
-        # decode JSON message
-        data = json.loads(message['data'])
-
-        # Convert data to custom msg
-        hand_landmarks_msg = {
-            "header": {"stamp": data['timestamp']},  # Simulation Header
-            "hand": data['hand'],
-            "score": data['score'],
-            "landmarks": [
-                {"id": landmark["id"], "x": landmark["x"], "y": landmark["y"], "z": landmark["z"]}
-                for landmark in data["landmarks"]
-            ]
-        }
+        #Create dei custom message HandLandmark
+        hand_landmarks_list = [
+            roslibpy.Message({
+                "id": lm["id"],
+                "x": lm["x"],
+                "y": lm["y"],
+                "z": lm["z"]
+            })
+            for lm in message["landmarks"]
+        ]
+        # Create custom message All_landmarks []
+        all_landmarks_msg = roslibpy.Message({
+            "header": {
+                "stamp": {
+                    "secs": int(message['timestamp']),
+                    "nsecs": int((message['timestamp'] % 1) * 1e9)
+                }
+            },
+            "hand": message['hand'],
+            "score": message['score'],
+            "landmarks": hand_landmarks_list
+        })
+        ros_client.publish_data("/hand_landmarks", all_landmarks_msg)
 
     except Exception as e:
         logging.error(f"Error processing message: {e}")
@@ -92,7 +103,7 @@ def hand_landmarks_callback(message):
 if __name__ == "__main__":
     ros_client = ROSclient()
     ros_client.connect()
-    ros_client.create_subscriber('/hand_landmarks', 'std_msgs/String', hand_landmarks_callback)
+    ros_client.create_subscriber('/hand_landmarks', 'custom_msgs/All_landmarks', hand_landmarks_callback)
 
     try:
         ros_client.client.run_forever()

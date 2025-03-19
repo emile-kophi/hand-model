@@ -1,20 +1,19 @@
 import cv2
 import mediapipe as mp
 import logging
-import json  # Added for serializing data in JSON format
 from ROSclient import ROSclient
+import roslibpy
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
-logging.getLogger("roslibpy").setLevel(logging.INFO)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Initialize ROS connection
 ros_client = ROSclient()
 ros_client.connect()
-ros_client.create_publisher('/hand_landmarks', 'std_msgs/String')  # Add publisher for ROS
+ros_client.create_publisher('/hand_landmarks', 'custom_msgs/All_landmarks')  # Add publisher for ROS
 
 # Webcam input:
 cap = cv2.VideoCapture(0)
@@ -45,7 +44,6 @@ with mp_hands.Hands(
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
         if results.multi_hand_landmarks:
-            hand_data = []  # Added to collect hand data
             for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
                 hand_label = results.multi_handedness[i].classification[0].label  # 'Left' or 'Right'
                 hand_score = results.multi_handedness[i].classification[0].score  # Probability of hand identification
@@ -62,13 +60,12 @@ with mp_hands.Hands(
                     })
 
                 # Create the message for ROS
-                message_data = {
+                message_data = roslibpy.Message({
                     "timestamp": timestamp,
                     "hand": hand_label,
                     "score": hand_score,
                     "landmarks": landmarks
-                }
-                hand_data.append(message_data)
+                })
 
                 # Draw the landmarks on the hands
                 mp_drawing.draw_landmarks(
@@ -79,8 +76,7 @@ with mp_hands.Hands(
                     mp_drawing_styles.get_default_hand_connections_style())
 
             # Serialize data to JSON and publish it to ROS
-            json_data = json.dumps({"data": hand_data})
-            ros_client.publish_data('/hand_landmarks', json_data)
+            ros_client.publish_data('/hand_landmarks', message_data)
 
         # Display the image
         cv2.imshow('MediaPipe Hands', image)
