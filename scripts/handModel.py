@@ -1,26 +1,26 @@
 import cv2
 import mediapipe as mp
 import logging
-from ROSclient import ROSclient
+from RosClient import RosClient
 import roslibpy
-from ROSclient import hand_landmarks_callback
+from callback import hand_landmarks_callback
 import time
 
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
-logging.basicConfig(level=logging.INFO)
+
 
 # Initialize ROS connection
-ros_client_pub = ROSclient()
-ros_client_sub = ROSclient()
-ros_client_pub.connect()
-ros_client_sub.connect()
-ros_client_pub.create_publisher('/hand_landmarks', 'custom_msgs/All_landmarks')  # Add publisher for ROS
-ros_client_sub.create_subscriber('/hand_landmarks', 'custom_msgs/All_landmarks', hand_landmarks_callback)
+ros_client= RosClient()
+ros_client.connect()
+ros_client.create_publisher('/hand_landmarks', 'custom_msgs/All_landmarks')  # Add publisher for ROS
+ros_client.create_subscriber('/hand_landmarks', 'custom_msgs/All_landmarks', hand_landmarks_callback)
 
 # Webcam input:
 cap = cv2.VideoCapture(0)
@@ -89,7 +89,7 @@ with mp_hands.Hands(
                     mp_drawing_styles.get_default_hand_connections_style())
 
             # publish data
-            ros_client_pub.publish_data('/hand_landmarks', message_data)
+            ros_client.publish_data('/hand_landmarks', message_data)
 
 
 
@@ -102,5 +102,5 @@ with mp_hands.Hands(
             break
 
 cap.release()
-ros_client_pub.disconnect()
-ros_client_sub.disconnect()
+ros_client.disconnect()
+ros_client.disconnect()
