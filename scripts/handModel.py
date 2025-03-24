@@ -1,3 +1,6 @@
+''''In this code, we use the Hand Landmark Model by MediaPipe (Google) and add lines for communication via ROS
+model: https://mediapipe.readthedocs.io/en/latest/solutions/hands.html#hand-landmark-model'''
+
 import cv2
 import mediapipe as mp
 import logging
