@@ -14,8 +14,6 @@ from configuration import tracking as tcg
 
 
 
-
-
 class HandDetector:
     """manage the hand detection by MediaPipe."""
     
@@ -63,7 +61,7 @@ class HandTrackerApp:
         self.cap = cv2.VideoCapture(0)
 
         if not self.cap.isOpened():
-            cfg.logger.error("Errore: la fotocamera non è accessibile.")
+            cfg.logger.error(" attention! your camera is not available")
             exit()
 
     def start(self):
@@ -114,10 +112,10 @@ class HandTrackerApp:
 
                     # ESC per uscire
                     if cv2.waitKey(5) & 0xFF == 27:
-                        cfg.logger.warning("Chiusura del programma.")
+                        cfg.logger.warning("program closed")
                         break
         except Exception as e:
-            cfg.logger.error(f"Errore durante l'esecuzione: {e}")
+            cfg.logger.error(f"error during runing: {e}")
         finally:
             self.cap.release()
             self.ros_client.disconnect()

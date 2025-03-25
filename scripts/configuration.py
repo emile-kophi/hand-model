@@ -3,9 +3,10 @@ import roslibpy
 
 
 class CameraParam:
+    '''parameters of hand detection via webcam'''
     #Tracking parameters
-    detection_confidence=0.6
-    tracking_confidence=0.6
+    detection_confidence=0.7
+    tracking_confidence=0.7
     complexity=0
 tracking=CameraParam()
 
