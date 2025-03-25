@@ -1,108 +1,130 @@
+
 ''''In this code, we use the Hand Landmark Model by MediaPipe (Google) and add lines for communication via ROS
 model: https://mediapipe.readthedocs.io/en/latest/solutions/hands.html#hand-landmark-model'''
 
 
-
-
 import cv2
 import mediapipe as mp
-import logging
+import time
 from RosClient import RosClient
 import roslibpy
 from configuration import hand_landmarks_callback
 from configuration import config as cfg
-import time
-
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
-mp_hands = mp.solutions.hands
+from configuration import tracking as tcg
 
 
 
-# Initialize ROS connection
-ros_client= RosClient()
-ros_client.connect()
-ros_client.create_publisher(cfg.ROS_TOPIC, cfg.ROS_TOPIC_TYPE)  # Add publisher for ROS
-ros_client.create_subscriber(cfg.ROS_TOPIC, cfg.ROS_TOPIC_TYPE, hand_landmarks_callback)
 
-# Webcam input:
-cap = cv2.VideoCapture(0)
-# cap = cv2.VideoCapture(cv2.CAP_DSHOW)  # Usa il driver di Windows DirectShow
 
-if not cap.isOpened():
-    logging.error("Your camera is off")
-    exit()
+class HandDetector:
+    """manage the hand detection by MediaPipe."""
+    
+    def __init__(self, min_detection_confidence=tcg.detection_confidence, min_tracking_confidence=tcg.tracking_confidence):
+        self.mp_hands = mp.solutions.hands
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
+        self.hands = self.mp_hands.Hands(
+            model_complexity=tcg.complexity,
+            min_detection_confidence=min_detection_confidence,
+            min_tracking_confidence=min_tracking_confidence
+        )
 
-with mp_hands.Hands(
-    model_complexity=0,
-    min_detection_confidence=0.6,
-    min_tracking_confidence=0.6) as hands:
+    def detect_hands(self, image):
+        """image elaboration """
 
-    while cap.isOpened():
-        success, image = cap.read()
-        if not success:
-            continue  # If the frame is empty, skip to the next iteration
-
-        # To improve performance, mark the image as not writable to pass by reference
         image.flags.writeable = False
         image = cv2.flip(image, 1)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        results = hands.process(image)
-
-        # Draw the hand annotations on the image
+        results = self.hands.process(image)
         image.flags.writeable = True
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        return results, image
 
-        if results.multi_hand_landmarks:
-            for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
-                hand_label = results.multi_handedness[i].classification[0].label  # 'Left' or 'Right'
-                hand_score = results.multi_handedness[i].classification[0].score  # Probability of hand identification
-                timestamp = int(cv2.getTickCount() / cv2.getTickFrequency() * 1000)
-                # Creazione manuale di un Header come dizionario
-                header = {
-                'stamp': {'secs': int(time.time()), 'nsecs': 0},  # Timestamp in secondi e nanosecondi
-                'frame_id': 'hand_frame'  # Definisci il frame_id
-                }
-
-
-                # Save landmark coordinates in a dictionary
-                landmarks = []
-                for idx, landmark in enumerate(hand_landmarks.landmark):
-                    landmarks.append({
-                        "id": idx,
-                        "x": landmark.x,
-                        "y": landmark.y,
-                        "z": landmark.z
-                    })
-
-                # Create the message for ROS
-                message_data = roslibpy.Message({
-                    "header": header,
-                    "hand": hand_label,
-                    "score": hand_score,
-                    "landmarks": landmarks
-                })
-
-                # Draw the landmarks on the hands
-                mp_drawing.draw_landmarks(
-                    image,
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style())
-
-            # publish data
-            ros_client.publish_data(cfg.ROS_TOPIC, message_data)
+    def draw_landmarks(self, image, hand_landmarks):
+        """Draw landmarks on image deteceted"""
+        
+        for hand in hand_landmarks:
+            self.mp_drawing.draw_landmarks(
+                image,
+                hand,
+                self.mp_hands.HAND_CONNECTIONS,
+                self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                self.mp_drawing_styles.get_default_hand_connections_style()
+            )
+        return image
 
 
+class HandTrackerApp:
+    """management of tracking process and send data to ROS."""
+    
+    def __init__(self):
+        self.detector = HandDetector()
+        self.ros_client = RosClient()
+        self.cap = cv2.VideoCapture(0)
 
-        # Display the image
-        cv2.imshow('MediaPipe Hands', image)
+        if not self.cap.isOpened():
+            cfg.logger.error("Errore: la fotocamera non è accessibile.")
+            exit()
 
-        # Press ESC to stop the video
-        if cv2.waitKey(5) & 0xFF == 27:
-            logging.warning("No more access for webcam")
-            break
+    def start(self):
 
-cap.release()
-ros_client.disconnect()
+        """start hand's tracking and comunication via ROS."""
+        self.ros_client.connect()
+        self.ros_client.create_publisher(cfg.ROS_TOPIC, cfg.ROS_TOPIC_TYPE)
+        self.ros_client.create_subscriber(cfg.ROS_TOPIC, cfg.ROS_TOPIC_TYPE, hand_landmarks_callback)
+
+        try:
+            with self.detector.hands as hands:
+                while self.cap.isOpened():
+                    success, image = self.cap.read()
+                    if not success:
+                        continue  # Skip empty frame
+
+                    results, image = self.detector.detect_hands(image)
+
+                    if results.multi_hand_landmarks:
+                        for i, hand_landmarks in enumerate(results.multi_hand_landmarks):
+                            hand_label = results.multi_handedness[i].classification[0].label
+                            hand_score = results.multi_handedness[i].classification[0].score
+
+                            landmarks = [{"id": idx, "x": lm.x, "y": lm.y, "z": lm.z} 
+                                         for idx, lm in enumerate(hand_landmarks.landmark)]
+
+                            # Create header ROS
+                            header = {
+                                'stamp': {'secs': int(time.time()), 'nsecs': 0},
+                                'frame_id': 'hand_frame'
+                            }
+
+                            # Create ROS message
+                            message_data = roslibpy.Message({
+                                "header": header,
+                                "hand": hand_label,
+                                "score": hand_score,
+                                "landmarks": landmarks
+                            })
+
+                            # data publication via ROS
+                            self.ros_client.publish_data(cfg.ROS_TOPIC, message_data)
+
+                            # draw landmarks
+                            image = self.detector.draw_landmarks(image, [hand_landmarks])
+
+                    cv2.imshow('MediaPipe Hands', image)
+
+                    # ESC per uscire
+                    if cv2.waitKey(5) & 0xFF == 27:
+                        cfg.logger.warning("Chiusura del programma.")
+                        break
+        except Exception as e:
+            cfg.logger.error(f"Errore durante l'esecuzione: {e}")
+        finally:
+            self.cap.release()
+            self.ros_client.disconnect()
+            cv2.destroyAllWindows()
+
+
+# start the program
+if __name__ == "__main__":
+    app = HandTrackerApp()
+    app.start()

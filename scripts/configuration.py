@@ -1,6 +1,15 @@
 import logging
 import roslibpy
 
+
+class CameraParam:
+    #Tracking parameters
+    detection_confidence=0.6
+    tracking_confidence=0.6
+    complexity=0
+tracking=CameraParam()
+
+
 class RosParam:
     '''parameters of base configuration on ROS'''
 
