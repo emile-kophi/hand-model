@@ -1,12 +1,25 @@
 import logging
-from RosClient import RosClient
 import roslibpy
+
+class RosParam:
+    '''parameters of base configuration on ROS'''
+
+    # configuration of logger
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
+
+    # ROS parameters
+    ROS_TOPIC='/hand_landmarks'
+    ROS_TOPIC_TYPE='custom_msgs/All_landmarks'
+
+config= RosParam()
 
 
 # CALLBACK to recived landmark data
 def hand_landmarks_callback(message):
     try:
-        logging.info(" message recived")
+        config.logger.info(" message recived")
 
         #Create dei custom message HandLandmark
         hand_landmarks_list = [
@@ -32,4 +45,6 @@ def hand_landmarks_callback(message):
         })
         return(all_landmarks_msg)
     except Exception as e:
-        logging.error(f"Error processing message: {e}")
+        config.logger.error(f"Error processing message: {e}")
+
+

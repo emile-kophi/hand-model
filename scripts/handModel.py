@@ -1,17 +1,17 @@
 ''''In this code, we use the Hand Landmark Model by MediaPipe (Google) and add lines for communication via ROS
 model: https://mediapipe.readthedocs.io/en/latest/solutions/hands.html#hand-landmark-model'''
 
+
+
+
 import cv2
 import mediapipe as mp
 import logging
 from RosClient import RosClient
 import roslibpy
-from callback import hand_landmarks_callback
+from configuration import hand_landmarks_callback
+from configuration import config as cfg
 import time
-
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -22,8 +22,8 @@ mp_hands = mp.solutions.hands
 # Initialize ROS connection
 ros_client= RosClient()
 ros_client.connect()
-ros_client.create_publisher('/hand_landmarks', 'custom_msgs/All_landmarks')  # Add publisher for ROS
-ros_client.create_subscriber('/hand_landmarks', 'custom_msgs/All_landmarks', hand_landmarks_callback)
+ros_client.create_publisher(cfg.ROS_TOPIC, cfg.ROS_TOPIC_TYPE)  # Add publisher for ROS
+ros_client.create_subscriber(cfg.ROS_TOPIC, cfg.ROS_TOPIC_TYPE, hand_landmarks_callback)
 
 # Webcam input:
 cap = cv2.VideoCapture(0)
@@ -92,7 +92,7 @@ with mp_hands.Hands(
                     mp_drawing_styles.get_default_hand_connections_style())
 
             # publish data
-            ros_client.publish_data('/hand_landmarks', message_data)
+            ros_client.publish_data(cfg.ROS_TOPIC, message_data)
 
 
 
@@ -105,5 +105,4 @@ with mp_hands.Hands(
             break
 
 cap.release()
-ros_client.disconnect()
 ros_client.disconnect()
