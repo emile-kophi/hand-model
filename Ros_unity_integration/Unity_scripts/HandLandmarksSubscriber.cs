@@ -29,11 +29,15 @@ public class HandLandmarksSubscriber : MonoBehaviour
         {
             Vector3 pos = new Vector3(
                 (float)msg.landmarks[i].x,
-                (float)msg.landmarks[i].y,
+                -(float)msg.landmarks[i].y,
                 (float)msg.landmarks[i].z
             );
 
             landmarkSpheres[i].transform.position = pos;
+            Debug.Log($"Landmark {i}: x={msg.landmarks[i].x}, y={msg.landmarks[i].y}, z={msg.landmarks[i].z}");
         }
+        
+
+     
     }
 }
