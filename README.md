@@ -6,7 +6,7 @@ The system captures hand movements via a webcam, processes the data, and visuali
 ---
 
 ## Introduction
-This work outlines an approach that leverages ROS and the [roslibpy](https://roslibpy.readthedocs.io/en/latest/) library to replicate human hand movements in Unity.
+This work outlines an approach that leverages ROS and the roslibpy library to replicate human hand movements in Unity.
 
 - Uses the updated MediaPipe hand landmark detection model (February 2023).  
 - Tracks a hand using **21 key landmarks**, each with X, Y, and Z coordinates.  
