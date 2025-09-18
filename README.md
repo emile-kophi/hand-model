@@ -1,6 +1,6 @@
 # Hand Movement Simulation with ROS and Unity
 
-This project demonstrates a method for simulating human hand movements in Unity based on real-time hand tracking performed in Python using the [MediaPipe](https://mediapipe.readthedocs.io/en/latest/solutions/hands.html) library and [ROS](https://www.ros.org/) (Robot Operating System).  
+This project demonstrates a method for simulating human hand movements in Unity based on real-time hand tracking performed in Python using the MediaPipe library and ROS (Robot Operating System).  
 The system captures hand movements via a webcam, processes the data, and visualizes the landmarks in a Unity scene.
 
 ---
